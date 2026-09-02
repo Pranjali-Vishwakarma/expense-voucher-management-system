@@ -234,3 +234,44 @@ exports.rejectVoucher = async (req, res, next) => {
         next(err);
     }
 };
+
+// GET /api/vouchers/stats
+exports.getVoucherStats = async (req, res, next) => {
+    try {
+        let query = `
+            SELECT 
+                COUNT(*) as total_vouchers,
+                COUNT(CASE WHEN status = 'draft' THEN 1 END) as draft_count,
+                COUNT(CASE WHEN status = 'submitted' THEN 1 END) as pending_count,
+                COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_count,
+                COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_count,
+                COALESCE(SUM(CASE WHEN status = 'approved' THEN amount ELSE 0 END), 0) as total_approved_amount,
+                COALESCE(SUM(CASE WHEN status = 'submitted' THEN amount ELSE 0 END), 0) as total_pending_amount
+            FROM vouchers
+        `;
+        let params = [];
+
+        // Employees only see stats for their own vouchers
+        if (req.user.role === 'employee') {
+            query += ` WHERE employee_id = $1`;
+            params.push(req.user.id);
+        }
+
+        const result = await pool.query(query, params);
+
+        // PostgreSQL returns COUNT and SUM as strings, so we parse them
+        const stats = {
+            total_vouchers: parseInt(result.rows[0].total_vouchers),
+            draft_count: parseInt(result.rows[0].draft_count),
+            pending_count: parseInt(result.rows[0].pending_count),
+            approved_count: parseInt(result.rows[0].approved_count),
+            rejected_count: parseInt(result.rows[0].rejected_count),
+            total_approved_amount: parseFloat(result.rows[0].total_approved_amount),
+            total_pending_amount: parseFloat(result.rows[0].total_pending_amount)
+        };
+
+        res.json({ success: true, stats });
+    } catch (err) {
+        next(err);
+    }
+};

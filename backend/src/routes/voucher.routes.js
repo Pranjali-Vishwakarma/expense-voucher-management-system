@@ -6,6 +6,9 @@ const controller = require('../controllers/voucher.controller');
 
 router.use(auth); // all voucher routes require login
 
+//Universal stats route (controller logic handles role-based scoping)
+router.get('/stats', controller.getVoucherStats);
+
 // Employee only
 router.post('/', role('employee'), controller.createVoucher);
 router.get('/mine', role('employee'), controller.getMyVouchers);
