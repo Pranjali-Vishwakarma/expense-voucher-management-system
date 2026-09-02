@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import GlobalToast from './components/GlobalToast';
+
 import Login from './pages/Login';
 import AppLayout from './layouts/AppLayout';
 import ProtectedRoute from './routes/ProtectedRoute';
@@ -21,7 +23,9 @@ import AccountsVoucherDetails from './pages/accounts/VoucherDetails';
 function App() {
   return (
     <BrowserRouter>
+      <GlobalToast />
       <Routes>
+
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Navigate to="/login" replace />} />
 
