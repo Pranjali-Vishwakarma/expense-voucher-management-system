@@ -10,6 +10,10 @@ import EditVoucher from './pages/employee/EditVoucher';
 import VoucherDetails from './pages/employee/VoucherDetails';
 
 import DirectorDashboard from './pages/DirectorDashboard';
+import PendingApprovals from './pages/director/PendingApprovals';
+import AllVouchers from './pages/director/AllVouchers';
+import VoucherApproval from './pages/director/VoucherApproval';
+
 import AccountsDashboard from './pages/AccountsDashboard';
 
 function App() {
@@ -43,7 +47,9 @@ function App() {
           }
         >
           <Route path="/director/dashboard" element={<DirectorDashboard />} />
-          {/* pending-approvals, all-vouchers added in Phase 5 */}
+          <Route path="/director/pending-approvals" element={<PendingApprovals />} />
+          <Route path="/director/all-vouchers" element={<AllVouchers />} />
+          <Route path="/director/vouchers/:id" element={<VoucherApproval />} />
         </Route>
 
         {/* Accounts routes */}

@@ -8,6 +8,15 @@ export default function DirectorDashboard() {
     const handleLogout = () => {
         logout();
         navigate('/login');
+
+        useEffect(() => {
+            const loadStats = async () => {
+                const res = await api.get('/vouchers');
+                const all = res.data.vouchers;
+                setPendingCount(all.filter(v => v.status === 'submitted').length);
+            };
+            loadStats();
+        }, []);
     };
 
     return (
