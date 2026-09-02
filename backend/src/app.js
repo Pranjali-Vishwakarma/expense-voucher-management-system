@@ -4,6 +4,7 @@ const pool = require('./config/db');
 const authRoutes = require('./routes/auth.routes');
 const errorHandler = require('./middleware/error.middleware');
 const auth = require('./middleware/auth.middleware');
+const voucherRoutes = require('./routes/voucher.routes');
 const app = express();
 
 app.use(cors());
@@ -27,5 +28,7 @@ app.get('/api/protected-test', auth, (req, res) => {
     res.json({ success: true, message: `Hello ${req.user.name}, role: ${req.user.role}` });
 });
 app.use(errorHandler);
+
+app.use('/api/vouchers', voucherRoutes);
 
 module.exports = app;

@@ -19,7 +19,7 @@ export default function EmployeeDashboard() {
             <Typography color="text.secondary" mb={3}>
                 Role: {user?.role}
             </Typography>
-            <Button variant="outlined" onClick={logout}>
+            <Button variant="outlined" onClick={handleLogout}>
                 Logout
             </Button>
         </Box>
