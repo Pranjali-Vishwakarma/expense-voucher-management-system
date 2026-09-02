@@ -15,6 +15,8 @@ import AllVouchers from './pages/director/AllVouchers';
 import VoucherApproval from './pages/director/VoucherApproval';
 
 import AccountsDashboard from './pages/AccountsDashboard';
+import AccountsAllVouchers from './pages/accounts/AllVouchers';
+import AccountsVoucherDetails from './pages/accounts/VoucherDetails';
 
 function App() {
   return (
@@ -61,7 +63,8 @@ function App() {
           }
         >
           <Route path="/accounts/dashboard" element={<AccountsDashboard />} />
-          {/* all-vouchers added in Phase 6 */}
+          <Route path="/accounts/all-vouchers" element={<AccountsAllVouchers />} />
+          <Route path="/accounts/vouchers/:id" element={<AccountsVoucherDetails />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
