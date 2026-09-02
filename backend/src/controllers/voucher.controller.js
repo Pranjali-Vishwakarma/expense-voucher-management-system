@@ -156,12 +156,63 @@ exports.getPendingVouchers = async (req, res, next) => {
 // GET /api/vouchers  (Director + Accounts — all vouchers, org-wide)
 exports.getAllVouchers = async (req, res, next) => {
     try {
-        const result = await pool.query(
-            `SELECT v.*, u.name AS employee_name, u.email AS employee_email
-       FROM vouchers v
-       JOIN users u ON v.employee_id = u.id
-       ORDER BY v.created_at DESC`
-        );
+        const {
+            status, department, category,
+            startDate, endDate, minAmount, maxAmount,
+            sortBy, sortOrder, search
+        } = req.query;
+        // Base query
+        let query = `
+            SELECT v.*, u.name AS employee_name, u.email AS employee_email
+            FROM vouchers v
+            JOIN users u ON v.employee_id = u.id
+            WHERE 1=1
+        `;
+        let params = [];
+        let paramIndex = 1;
+        // Dynamic Filters
+        if (status) {
+            query += ` AND v.status = $${paramIndex++}`;
+            params.push(status);
+        }
+        if (department) {
+            query += ` AND v.department_name = $${paramIndex++}`;
+            params.push(department);
+        }
+        if (category) {
+            query += ` AND v.expense_category = $${paramIndex++}`;
+            params.push(category);
+        }
+        if (startDate) {
+            query += ` AND v.created_at >= $${paramIndex++}`;
+            params.push(startDate);
+        }
+        if (endDate) {
+            // Add 1 day to include the entire end date (up to 23:59:59)
+            query += ` AND v.created_at < ($${paramIndex++}::date + '1 day'::interval)`;
+            params.push(endDate);
+        }
+        if (minAmount) {
+            query += ` AND v.amount >= $${paramIndex++}`;
+            params.push(minAmount);
+        }
+        if (maxAmount) {
+            query += ` AND v.amount <= $${paramIndex++}`;
+            params.push(maxAmount);
+        }
+        if (search) {
+            // ILIKE is case-insensitive search in Postgres
+            query += ` AND (v.voucher_number ILIKE $${paramIndex} OR u.name ILIKE $${paramIndex})`;
+            params.push(`%${search}%`);
+            paramIndex++;
+        }
+        // Safe Sorting (Whitelist array prevents SQL Injection)
+        const allowedSorts = ['amount', 'created_at', 'status', 'department_name', 'voucher_number'];
+        const sortCol = allowedSorts.includes(sortBy) ? `v.${sortBy}` : 'v.created_at';
+        const order = sortOrder === 'asc' ? 'ASC' : 'DESC';
+
+        query += ` ORDER BY ${sortCol} ${order}`;
+        const result = await pool.query(query, params);
         res.json({ success: true, vouchers: result.rows });
     } catch (err) {
         next(err);
