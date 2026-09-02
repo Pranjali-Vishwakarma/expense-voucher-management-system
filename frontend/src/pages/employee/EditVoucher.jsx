@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import { voucherSchema } from '../../schemas/voucherSchema';
 import api from '../../services/api';
+import SignatureUpload from '../../components/SignatureUpload';
 
 const DEPARTMENTS = ['Sales', 'Engineering', 'HR', 'Finance', 'Operations'];
 const CATEGORIES = ['Travel', 'Food', 'Supplies', 'Software', 'Other'];
@@ -18,6 +19,7 @@ export default function EditVoucher() {
     const [loading, setLoading] = useState(true);
     const [signatureFile, setSignatureFile] = useState(null);
     const [existingSignatureUrl, setExistingSignatureUrl] = useState(null);
+    const [signatureUrl, setSignatureUrl] = useState(null);
 
     const { register, control, handleSubmit, reset, formState: { errors } } = useForm({
         resolver: zodResolver(voucherSchema),
@@ -56,27 +58,15 @@ export default function EditVoucher() {
 
     const submitVoucher = async (data, action) => {
         setError('');
+        if (action === 'submit' && !signatureUrl) {
+            setError('Signature is required before submission');
+            return;
+        }
         try {
-            let employee_signature_url = existingSignatureUrl;
-
-            if (signatureFile) {
-                const formData = new FormData();
-                formData.append('signature', signatureFile);
-                const uploadRes = await api.post('/upload/signature', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                });
-                employee_signature_url = uploadRes.data.url;
-            }
-
-            if (action === 'submit' && !employee_signature_url) {
-                setError('Signature is required before submission');
-                return;
-            }
-
-            await api.put(`/vouchers/${id}`, { ...data, employee_signature_url, action });
+            await api.post('/vouchers', { ...data, employee_signature_url: signatureUrl, action });
             navigate('/employee/my-vouchers');
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to update voucher');
+            setError(err.response?.data?.message || 'Failed to save voucher');
         }
     };
 
@@ -125,14 +115,7 @@ export default function EditVoucher() {
                     <TextField label="Amount" type="number" {...register('amount')}
                         error={!!errors.amount} helperText={errors.amount?.message} />
 
-                    <Button variant="outlined" component="label">
-                        {existingSignatureUrl ? 'Replace Signature' : 'Upload Signature'}
-                        <input type="file" hidden accept="image/*" onChange={(e) => setSignatureFile(e.target.files[0])} />
-                    </Button>
-                    {signatureFile && <Typography variant="caption">{signatureFile.name}</Typography>}
-                    {!signatureFile && existingSignatureUrl && (
-                        <Typography variant="caption" color="text.secondary">Signature already on file</Typography>
-                    )}
+                    <SignatureUpload existingUrl={existingSignatureUrl} onUploadSuccess={setExistingSignatureUrl} />
 
                     <Box display="flex" gap={2} mt={2}>
                         <Button variant="outlined" onClick={handleSubmit((d) => submitVoucher(d, 'draft'))}>

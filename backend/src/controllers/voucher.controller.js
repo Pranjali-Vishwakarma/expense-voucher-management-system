@@ -13,8 +13,8 @@ exports.createVoucher = async (req, res, next) => {
         if (!department_name || !expense_title || !expense_date || !amount) {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
-        if (Number(amount) <= 0) {
-            return res.status(400).json({ success: false, message: 'Amount must be greater than zero' });
+        if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+            return res.status(400).json({ success: false, message: 'Amount must be a valid number greater than zero' });
         }
         if (action === 'submit' && !employee_signature_url) {
             return res.status(400).json({ success: false, message: 'Signature is required before submission' });
@@ -80,6 +80,10 @@ exports.updateVoucher = async (req, res, next) => {
         }
         if (voucher.status !== 'draft') {
             return res.status(400).json({ success: false, message: 'Only draft vouchers can be edited' });
+        }
+
+        if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+            return res.status(400).json({ success: false, message: 'Amount must be a valid number greater than zero' });
         }
 
         const {

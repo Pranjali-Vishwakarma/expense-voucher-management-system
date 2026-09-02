@@ -14,7 +14,7 @@ export default function AccountsDashboard() {
         <Box p={4}>
             <Typography variant="h4" mb={2}>Welcome, {user?.name}</Typography>
             <Typography color="text.secondary" mb={3}>Role: {user?.role}</Typography>
-            <Button variant="outlined" onClick={logout}>Logout</Button>
+            <Button variant="outlined" onClick={handleLogout}>Logout</Button>
         </Box>
     );
 }

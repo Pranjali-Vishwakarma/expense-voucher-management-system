@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import { voucherSchema } from '../../schemas/voucherSchema';
 import api from '../../services/api';
+import SignatureUpload from '../../components/SignatureUpload';
 
 const DEPARTMENTS = ['Sales', 'Engineering', 'HR', 'Finance', 'Operations'];
 const CATEGORIES = ['Travel', 'Food', 'Supplies', 'Software', 'Other'];
@@ -14,6 +15,7 @@ const CATEGORIES = ['Travel', 'Food', 'Supplies', 'Software', 'Other'];
 export default function CreateVoucher() {
     const [error, setError] = useState('');
     const [signatureFile, setSignatureFile] = useState(null);
+    const [signatureUrl, setSignatureUrl] = useState(null);
     const navigate = useNavigate();
 
     const { register, control, handleSubmit, formState: { errors } } = useForm({
@@ -22,24 +24,12 @@ export default function CreateVoucher() {
 
     const submitVoucher = async (data, action) => {
         setError('');
+        if (action === 'submit' && !signatureUrl) {
+            setError('Signature is required before submission');
+            return;
+        }
         try {
-            let employee_signature_url = null;
-
-            if (signatureFile) {
-                const formData = new FormData();
-                formData.append('signature', signatureFile);
-                const uploadRes = await api.post('/upload/signature', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                });
-                employee_signature_url = uploadRes.data.url;
-            }
-
-            if (action === 'submit' && !employee_signature_url) {
-                setError('Signature is required before submission');
-                return;
-            }
-
-            await api.post('/vouchers', { ...data, employee_signature_url, action });
+            await api.post('/vouchers', { ...data, employee_signature_url: signatureUrl, action });
             navigate('/employee/my-vouchers');
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to save voucher');
@@ -88,10 +78,7 @@ export default function CreateVoucher() {
                 <TextField label="Amount" type="number" {...register('amount')}
                     error={!!errors.amount} helperText={errors.amount?.message} />
 
-                <Button variant="outlined" component="label">
-                    Upload Signature
-                    <input type="file" hidden accept="image/*" onChange={(e) => setSignatureFile(e.target.files[0])} />
-                </Button>
+                <SignatureUpload onUploadSuccess={setSignatureUrl} />
                 {signatureFile && <Typography variant="caption">{signatureFile.name}</Typography>}
 
                 <Box display="flex" gap={2} mt={2}>
