@@ -6,10 +6,21 @@ const controller = require('../controllers/voucher.controller');
 
 router.use(auth); // all voucher routes require login
 
+// Employee only
 router.post('/', role('employee'), controller.createVoucher);
 router.get('/mine', role('employee'), controller.getMyVouchers);
 router.put('/:id', role('employee'), controller.updateVoucher);
 router.delete('/:id', role('employee'), controller.deleteVoucher);
-router.get('/:id', controller.getVoucherById); // employee/director/accounts, ownership checked inside
+
+// Director-only
+router.get('/pending', role('director'), controller.getPendingVouchers);
+router.patch('/:id/approve', role('director'), controller.approveVoucher);
+router.patch('/:id/reject', role('director'), controller.rejectVoucher);
+
+// Director + Accounts (org-wide view)
+router.get('/', role('director', 'accounts'), controller.getAllVouchers);
+
+// employee/director/accounts, ownership checked inside
+router.get('/:id', controller.getVoucherById);
 
 module.exports = router;

@@ -55,11 +55,16 @@ exports.getMyVouchers = async (req, res, next) => {
 // GET /api/vouchers/:id
 exports.getVoucherById = async (req, res, next) => {
     try {
-        const result = await pool.query(`SELECT * FROM vouchers WHERE id = $1`, [req.params.id]);
+        const result = await pool.query(
+            `SELECT v.*, u.name AS employee_name, u.email AS employee_email
+       FROM vouchers v
+       JOIN users u ON v.employee_id = u.id
+       WHERE v.id = $1`,
+            [req.params.id]
+        );
         const voucher = result.rows[0];
         if (!voucher) return res.status(404).json({ success: false, message: 'Voucher not found' });
 
-        // Employees can only view their own vouchers
         if (req.user.role === 'employee' && voucher.employee_id !== req.user.id) {
             return res.status(403).json({ success: false, message: 'Access denied' });
         }
@@ -127,6 +132,104 @@ exports.deleteVoucher = async (req, res, next) => {
 
         await pool.query(`DELETE FROM vouchers WHERE id = $1`, [req.params.id]);
         res.json({ success: true, message: 'Voucher deleted' });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// GET /api/vouchers/pending  (Director only)
+exports.getPendingVouchers = async (req, res, next) => {
+    try {
+        const result = await pool.query(
+            `SELECT v.*, u.name AS employee_name, u.email AS employee_email
+       FROM vouchers v
+       JOIN users u ON v.employee_id = u.id
+       WHERE v.status = 'submitted'
+       ORDER BY v.created_at ASC`
+        );
+        res.json({ success: true, vouchers: result.rows });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// GET /api/vouchers  (Director + Accounts — all vouchers, org-wide)
+exports.getAllVouchers = async (req, res, next) => {
+    try {
+        const result = await pool.query(
+            `SELECT v.*, u.name AS employee_name, u.email AS employee_email
+       FROM vouchers v
+       JOIN users u ON v.employee_id = u.id
+       ORDER BY v.created_at DESC`
+        );
+        res.json({ success: true, vouchers: result.rows });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// PATCH /api/vouchers/:id/approve  (Director only)
+exports.approveVoucher = async (req, res, next) => {
+    try {
+        const { director_signature_url } = req.body;
+
+        if (!director_signature_url) {
+            return res.status(400).json({ success: false, message: 'Director signature is required to approve' });
+        }
+
+        const existing = await pool.query(`SELECT * FROM vouchers WHERE id = $1`, [req.params.id]);
+        const voucher = existing.rows[0];
+        if (!voucher) return res.status(404).json({ success: false, message: 'Voucher not found' });
+
+        if (voucher.status !== 'submitted') {
+            return res.status(400).json({ success: false, message: 'Only submitted vouchers can be approved' });
+        }
+
+        const result = await pool.query(
+            `UPDATE vouchers SET
+        status = 'approved',
+        director_signature_url = $1,
+        approval_date = CURRENT_TIMESTAMP,
+        rejection_reason = NULL,
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2 RETURNING *`,
+            [director_signature_url, req.params.id]
+        );
+
+        res.json({ success: true, voucher: result.rows[0] });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// PATCH /api/vouchers/:id/reject  (Director only)
+exports.rejectVoucher = async (req, res, next) => {
+    try {
+        const { rejection_reason } = req.body;
+
+        if (!rejection_reason || !rejection_reason.trim()) {
+            return res.status(400).json({ success: false, message: 'Rejection reason is required' });
+        }
+
+        const existing = await pool.query(`SELECT * FROM vouchers WHERE id = $1`, [req.params.id]);
+        const voucher = existing.rows[0];
+        if (!voucher) return res.status(404).json({ success: false, message: 'Voucher not found' });
+
+        if (voucher.status !== 'submitted') {
+            return res.status(400).json({ success: false, message: 'Only submitted vouchers can be rejected' });
+        }
+
+        const result = await pool.query(
+            `UPDATE vouchers SET
+        status = 'rejected',
+        rejection_reason = $1,
+        approval_date = NULL,
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2 RETURNING *`,
+            [rejection_reason, req.params.id]
+        );
+
+        res.json({ success: true, voucher: result.rows[0] });
     } catch (err) {
         next(err);
     }
